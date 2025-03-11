@@ -5,28 +5,81 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lectura de Código de Barras</title>
     <style>
+        /* Estilos generales */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f7fa;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        h1 {
+            color: #4CAF50;
+            margin-bottom: 20px;
+        }
+
+        /* Contenedor principal */
         #scanner-container {
             position: relative;
-            width: 100%;
-            height: 100%;
+            width: 80%;
+            height: 60%;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            background-color: rgba(0, 0, 0, 0.2);
+            overflow: hidden;
         }
+
+        /* Estilo para el área del escáner */
         #scanner {
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.5);
+            background: rgba(0, 0, 0, 0.5);
         }
+
+        /* Estilo para el resultado */
         #result {
             margin-top: 20px;
-            font-size: 18px;
+            font-size: 20px;
+            color: #4CAF50;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        /* Botón de reinicio del escáner */
+        .reset-btn {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 20px;
+            display: block;
+            width: 200px;
+            margin-left: auto;
+            margin-right: auto;
+            transition: background-color 0.3s ease;
+        }
+
+        .reset-btn:hover {
+            background-color: #45a049;
         }
     </style>
 </head>
 <body>
-    <h1>Lectura de Código de Barras</h1>
-    <div id="scanner-container">
-        <div id="scanner"></div>
+    <div>
+        <h1>Lectura de Código de Barras</h1>
+        <div id="scanner-container">
+            <div id="scanner"></div>
+        </div>
+        <div id="result">Esperando escaneo...</div>
+        <button class="reset-btn" onclick="resetScanner()">Reiniciar Escáner</button>
     </div>
-    <div id="result">Esperando escaneo...</div>
 
     <!-- Incluir el CDN de QuaggaJS -->
     <script src="https://unpkg.com/quagga@0.12.1/dist/quagga.min.js"></script>
@@ -66,6 +119,13 @@
             Quagga.onDetected(function(result) {
                 document.getElementById('result').innerText = "Código detectado: " + result.codeResult.code;
             });
+        }
+
+        // Reiniciar el escáner
+        function resetScanner() {
+            Quagga.stop();
+            document.getElementById('result').innerText = "Esperando escaneo...";
+            startScanner();
         }
 
         // Iniciar el escáner cuando cargue la página
