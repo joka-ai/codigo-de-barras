@@ -73,6 +73,9 @@
                     document.getElementById('result').innerText = "Error al iniciar el escáner";
                     return;
                 }
+                // Set the willReadFrequently attribute to improve canvas performance
+                document.querySelector('canvas').setAttribute('willReadFrequently', 'true');
+
                 Quagga.start();
             });
 
@@ -111,13 +114,12 @@
         }
 
         function resetScanner() {
-            Quagga.stop();
+            // No borrar el historial
             document.getElementById('result').innerText = "Esperando escaneo...";
             document.getElementById("scanner-container").classList.add("d-none");
             document.getElementById("resetButton").classList.add("d-none");
 
-            history = []; // Limpiar historial
-            document.getElementById("historyList").innerHTML = ""; // Limpiar la lista del historial
+            // No limpiar historial ni la lista
         }
     </script>
 </body>
