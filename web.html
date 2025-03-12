@@ -94,14 +94,14 @@
                     const scannedCode = code.data;
                     document.getElementById('result').innerText = "Código QR detectado: " + scannedCode;
                     addToHistory(scannedCode);
-                    stopScanner();
+                    stopScanner(); // Detener escaneo después de la detección
+                    document.getElementById("resetButton").classList.remove("d-none"); // Mostrar botón de reiniciar
                 } else {
                     requestAnimationFrame(startQRCodeScanner);
                 }
             }
         }
 
-    
         function startBarcodeScanner() {
             // Lógica para escanear códigos de barras
             Quagga.init({
@@ -111,7 +111,6 @@
                     constraints: {
                         facingMode: "environment"
                     },
-                    // Agregar el atributo willReadFrequently para mejorar el rendimiento
                     willReadFrequently: true
                 },
                 decoder: {
@@ -127,11 +126,12 @@
                     const scannedCode = result.codeResult.code;
                     document.getElementById('result').innerText = "Código de barras detectado: " + scannedCode;
                     addToHistory(scannedCode);
-                    stopScanner();
+                    stopScanner(); // Detener escaneo después de la detección
+                    document.getElementById("resetButton").classList.remove("d-none"); // Mostrar botón de reiniciar
                 });
             });
         }
-        
+
         function addToHistory(code) {
             // Agregar el código al historial
             history.push(code);
@@ -148,6 +148,10 @@
             document.getElementById('result').innerText = "Esperando escaneo...";
             document.getElementById("scanner-container").classList.add("d-none");
             document.getElementById("resetButton").classList.add("d-none");
+            qrCodeScannerActive = false;
+            videoElement.srcObject = null;
+            history = [];
+            document.getElementById("historyList").innerHTML = ''; // Limpiar historial
         }
 
         function stopScanner() {
