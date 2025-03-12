@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Escáner de Código de Barras</title>
+    <title>Escáner de Código de Barras y QR</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://unpkg.com/quagga@0.12.1/dist/quagga.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/quagga/dist/quagga.min.js"></script>
     <style>
         #scanner-container {
             width: 100%;
@@ -20,13 +21,8 @@
             width: 100%;
             height: 100%;
         }
-        #history {
+        #result {
             margin-top: 20px;
-            border: 1px solid #ccc;
-            padding: 10px;
-            max-height: 200px;
-            overflow-y: scroll;
-            background-color: #f9f9f9;
         }
         .history-item {
             padding: 5px;
@@ -37,12 +33,12 @@
 </head>
 <body class="bg-light">
     <div class="container text-center mt-5">
-        <h1 class="text-primary">Escáner de Código de Barras</h1>
+        <h1 class="text-primary">Escáner de Código de Barras y QR</h1>
         <div class="btn-group mt-3" role="group">
             <button class="btn btn-primary" onclick="startScanner()">Escanear en tiempo real</button>
         </div>
         <div id="scanner-container" class="mt-4 d-none">
-            <div id="scanner"></div>
+            <video id="scanner" autoplay></video>
         </div>
         <div id="result" class="alert alert-info mt-3">Esperando escaneo...</div>
         <button id="resetButton" class="btn btn-danger mt-3 d-none" onclick="resetScanner()">Reiniciar</button>
@@ -52,66 +48,92 @@
             <div id="historyList"></div>
         </div>
     </div>
-    
+
     <script>
-        let history = []; // Array para almacenar el historial de códigos de barras
+        let history = []; // Array para almacenar el historial de códigos
+        let videoStream;
+        let videoElement = document.getElementById('scanner');
+        let qrCodeScannerActive = false; // Indica si el escáner QR está activo
 
         function startScanner() {
             document.getElementById("scanner-container").classList.remove("d-none");
-            document.getElementById("resetButton").classList.add("d-none"); // Ocultar el botón de reiniciar inicialmente
+            document.getElementById("resetButton").classList.add("d-none");
+
+            // Solicitar acceso a la cámara
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+                .then(stream => {
+                    videoStream = stream;
+                    videoElement.srcObject = stream;
+                    videoElement.onloadedmetadata = () => {
+                        // Empezar escaneo QR y de código de barras
+                        qrCodeScannerActive = true;
+                        startQRCodeScanner();
+                        startBarcodeScanner();
+                    };
+                })
+                .catch(err => {
+                    console.error(err);
+                    document.getElementById('result').innerText = "Error al iniciar el escáner";
+                });
+        }
+
+        function startQRCodeScanner() {
+            // Lógica para escanear códigos QR
+            if (qrCodeScannerActive) {
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+
+                canvas.width = videoElement.videoWidth;
+                canvas.height = videoElement.videoHeight;
+                context.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+
+                const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+                const code = jsQR(imageData.data, canvas.width, canvas.height);
+
+                if (code) {
+                    const scannedCode = code.data;
+                    document.getElementById('result').innerText = "Código QR detectado: " + scannedCode;
+                    addToHistory(scannedCode);
+                    stopScanner();
+                } else {
+                    requestAnimationFrame(startQRCodeScanner);
+                }
+            }
+        }
+
+    
+        function startBarcodeScanner() {
+            // Lógica para escanear códigos de barras
             Quagga.init({
                 inputStream: {
-                    name: "Live",
                     type: "LiveStream",
-                    target: document.querySelector('#scanner'),
-                    constraints: { facingMode: "environment" }
+                    target: videoElement,
+                    constraints: {
+                        facingMode: "environment"
+                    },
+                    // Agregar el atributo willReadFrequently para mejorar el rendimiento
+                    willReadFrequently: true
                 },
                 decoder: {
-                    readers: [
-                        "code_128_reader", 
-                        "ean_reader", 
-                        "ean_8_reader", 
-                        "ean_13_reader", 
-                        "upc_reader",
-                        "code_39_reader" 
-                    ]
+                    readers: ["code_128_reader", "ean_reader", "upc_reader", "code_39_reader", "ean_8_reader", "upc_e_reader"]
                 }
             }, function(err) {
                 if (err) {
                     console.error(err);
-                    document.getElementById('result').innerText = "Error al iniciar el escáner";
                     return;
                 }
-                // Set the willReadFrequently attribute to improve canvas performance
-                document.querySelector('canvas').setAttribute('willReadFrequently', 'true');
-
                 Quagga.start();
-            });
-
-            Quagga.onDetected(function(result) {
-                const code = result.codeResult.code;
-                document.getElementById('result').innerText = "Código detectado: " + code;
-
-                // Agregar al historial
-                addToHistory(code);
-
-                // Mostrar el botón de reiniciar
-                document.getElementById("resetButton").classList.remove("d-none");
-
-                // Sonido y vibración
-                alert("¡Código detectado!");
-                if (navigator.vibrate) {
-                    navigator.vibrate(200); // Vibrar durante 200 ms
-                }
-                let audio = new Audio('https://www.soundjay.com/button/beep-07.wav');
-                audio.play();
-
-                Quagga.stop(); // Detener el escáner después de detectar un código
+                Quagga.onDetected(function(result) {
+                    const scannedCode = result.codeResult.code;
+                    document.getElementById('result').innerText = "Código de barras detectado: " + scannedCode;
+                    addToHistory(scannedCode);
+                    stopScanner();
+                });
             });
         }
-
+        
         function addToHistory(code) {
-            // Agregar el código al array de historial
+            // Agregar el código al historial
             history.push(code);
 
             // Actualizar la lista del historial en la interfaz
@@ -123,12 +145,17 @@
         }
 
         function resetScanner() {
-            // No borrar el historial
             document.getElementById('result').innerText = "Esperando escaneo...";
             document.getElementById("scanner-container").classList.add("d-none");
             document.getElementById("resetButton").classList.add("d-none");
+        }
 
-            // No limpiar historial ni la lista
+        function stopScanner() {
+            if (videoStream) {
+                let tracks = videoStream.getTracks();
+                tracks.forEach(track => track.stop());
+            }
+            Quagga.stop();
         }
     </script>
 </body>
